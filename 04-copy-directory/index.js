@@ -1,6 +1,6 @@
-// const fs = require('fs');
 const path = require('path');
 const fsPromises = require('fs/promises');
+
 async function findFiles(searchPath) {
     let files = await fsPromises.readdir(path.join(__dirname, ...searchPath), { withFileTypes: true });
     let nFiles = [];
@@ -21,34 +21,36 @@ async function findFiles(searchPath) {
     return [nFiles, nDirectories];
 }
 
-async function createFiles(folderCopyFrom, folderCopyTo) {
-    let filesAndDirectories = await findFiles([folderCopyFrom]);
-    let files = filesAndDirectories[0];
-    let directories = filesAndDirectories[1];
-    directories.sort((a, b) => a.path.length - b.path.length);
+async function copyFiles(copyFrom, copyTo) {
+    await fsPromises.mkdir(path.join(__dirname, ...copyTo), { recursive: true });
+    await removeFiles(copyTo);
+    let files_directories = await findFiles(copyFrom);
+    let files = files_directories[0];
+    let directories = files_directories[1];
+    directories.forEach(async (directory) => {
+        let newPath = [...directory.path];
+        newPath[0] = path.join(...copyTo);
+        await fsPromises.mkdir(path.join(__dirname, ...newPath, directory.name), { recursive: true });
 
-    directories.forEach(async file => {
-        const newPath = [...file.path];
-        newPath[0] = folderCopyTo;
-        await fsPromises.mkdir(
-            path.join(__dirname, ...newPath, file.name),
-            {recursive: true}
-        );
     });
 
     files.forEach(async file => {
-        const newPath = [...file.path];
-        newPath[0] = folderCopyTo;
-        await fsPromises.copyFile(
-            path.join(__dirname, ...file.path, file.name),
-            path.join(__dirname, ...newPath, file.name)
-        );
+        let newPath = [...file.path];
+        newPath[0] = path.join(...copyTo);
+        await fsPromises.copyFile(path.join(__dirname, ...file.path, file.name), path.join(__dirname, ...newPath, file.name));
     });
-} 
-
-async function createCopy(copyFrom, copyName) {
-    await fsPromises.mkdir(path.join(__dirname, copyName), {recursive: true});
-    await createFiles(copyFrom, copyName);
 }
 
-createCopy('files', 'files-copy');
+async function removeFiles(copyTo) {
+    let files_directories = await findFiles(copyTo);
+    let files = files_directories[0];
+    let directories = files_directories[1];
+    for (const file of files) {
+        await fsPromises.rm(path.join(__dirname, ...file.path, file.name));
+    }
+    for (const file of directories) {
+        await fsPromises.rmdir(path.join(__dirname, ...file.path, file.name));
+    }
+}
+
+copyFiles(['files'], ['files-copy']);
