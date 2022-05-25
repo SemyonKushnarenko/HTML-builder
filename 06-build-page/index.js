@@ -65,14 +65,14 @@ async function findFilesByExtension(searchPath, extension) {
     }
     return nFiles;
 }
-async function bundleStyles() {
-    let files = await findFilesByExtension(['styles'], '.css');
-    await fsPromises.writeFile(path.join(__dirname, 'project-dist', 'style.css'), '');
+async function bundleStyles(searchPath, pathToBundle) {
+    let files = await findFilesByExtension(searchPath, '.css');
+    await fsPromises.writeFile(path.join(__dirname, ...pathToBundle, 'style.css'), '');
     files.forEach(async file => {
         const readableStream = fs.createReadStream(path.join(__dirname, ...file.path, file.name), 'utf-8');
         readableStream.on('data', async chunk => {
 
-            await fsPromises.appendFile(path.join(__dirname, 'project-dist', 'style.css'), chunk);
+            await fsPromises.appendFile(path.join(__dirname, ...pathToBundle, 'style.css'), chunk);
         });
     });
 }
@@ -100,8 +100,8 @@ async function buildHtml(componentsFolder, pathToBundle) {
 async function bundle(pathToBundle) {
     await fsPromises.mkdir(path.join(__dirname, ...pathToBundle), { recursive: true });
     buildHtml(['components'], pathToBundle);
-    bundleStyles();
-    copyFiles(['assets'], ['project-dist', 'assets']);
+    bundleStyles(['styles'], pathToBundle);
+    copyFiles(['assets'], [...pathToBundle, 'assets']);
 }
 
 bundle(['project-dist']);
